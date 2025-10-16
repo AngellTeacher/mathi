@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplication Tic Tac Toe</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .x-symbol::before {
+            content: 'X';
+            color: #3b82f6; /* Tailwind blue-500 */
+            font-weight: 700;
+            font-size: 5rem;
+            line-height: 1;
+            animation: pop-in 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        .o-symbol::before {
+            content: 'O';
+            color: #ef4444; /* Tailwind red-500 */
+            font-weight: 700;
+            font-size: 5rem;
+            line-height: 1;
+            animation: pop-in 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        .cell:not(.x-symbol):not(.o-symbol):hover {
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+        #questionModal {
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+        }
+        @keyframes pop-in {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen p-4">
+
+    <main class="text-center relative">
+        <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-2">Multiplication Tic Tac Toe</h1>
+        <p id="status" class="text-lg md:text-xl text-gray-600 mb-6 h-8">Player X's turn</p>
+        
+        <!-- Game Board -->
+        <div id="board" class="grid grid-cols-3 gap-3 mx-auto w-64 h-64 md:w-96 md:h-96 relative">
+            <div data-cell-index="0" class="cell bg-white rounded-lg shadow-md flex items-center justify-center cursor-pointer transition duration-200 ease-in-out"></div>
+            <div data-cell-index="1" class="cell bg-white rounded-lg shadow-md flex items-center justify-center cursor-pointer transition duration-200 ease-in-out"></div>
+            <div data-cell-index="2" class="cell bg-white rounded-lg shadow-md flex items-center justify-center cursor-pointer transition duration-200 ease-in-out"></div>
+            <div data-cell-index="3" class="cell bg-white rounded-lg shadow-md flex items-center justify-center cursor-pointer transition duration-200 ease-in-out"></div>
+            <div data-cell-index="4" class="cell bg-white rounded-lg shadow-md flex items-center justify-center cursor-pointer transition duration-200 ease-in-out"></div>
+            <div data-cell-index="5" class="cell bg-white rounded-lg shadow-md flex items-center justify-center cursor-pointer transition duration-200 ease-in-out"></div>
+            <div data-cell-index="6" class="cell bg-white rounded-lg shadow-md flex items-center justify-center cursor-pointer transition duration-200 ease-in-out"></div>
+            <div data-cell-index="7" class="cell bg-white rounded-lg shadow-md flex items-center justify-center cursor-pointer transition duration-200 ease-in-out"></div>
+            <div data-cell-index="8" class="cell bg-white rounded-lg shadow-md flex items-center justify-center cursor-pointer transition duration-200 ease-in-out"></div>
+        </div>
+
+        <!-- Restart Button -->
+        <button id="restartButton" class="mt-8 px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition duration-200 ease-in-out">
+            Restart Game
+        </button>
+
+        <!-- Question Modal -->
+        <div id="questionModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center p-4 opacity-0 pointer-events-none scale-95">
+            <div class="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-sm text-center transform">
+                <p id="questionText" class="text-4xl font-bold text-gray-800 mb-6"></p>
+                <input type="number" id="answerInput" class="w-full text-center text-2xl p-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="Your Answer">
+                <button id="submitAnswer" class="mt-6 w-full py-3 bg-green-500 text-white font-bold rounded-lg shadow-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition">Submit</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // DOM Elements
+        const statusDisplay = document.getElementById('status');
+        const board = document.getElementById('board');
+        const restartButton = document.getElementById('restartButton');
+        const cells = document.querySelectorAll('[data-cell-index]');
+        const questionModal = document.getElementById('questionModal');
+        const questionText = document.getElementById('questionText');
+        const answerInput = document.getElementById('answerInput');
+        const submitAnswer = document.getElementById('submitAnswer');
+
+        // Game State Variables
+        let gameActive = true;
+        let currentPlayer = 'X';
+        let gameState = ["", "", "", "", "", "", "", "", ""];
+        let currentProblem = { num1: 0, num2: 0, answer: 0 };
+        let selectedCellIndex = null;
+
+        const winningConditions = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+            [0, 4, 8], [2, 4, 6]             // diagonals
+        ];
+
+        // --- Game Logic Functions ---
+
+        function showQuestion(cellIndex) {
+            selectedCellIndex = cellIndex;
+            // Generate a 1-digit x 1-digit problem (using 1-9 for a good challenge)
+            currentProblem.num1 = Math.floor(Math.random() * 9) + 1;
+            currentProblem.num2 = Math.floor(Math.random() * 9) + 1;
+            currentProblem.answer = currentProblem.num1 * currentProblem.num2;
+            
+            questionText.textContent = `${currentProblem.num1} × ${currentProblem.num2} = ?`;
+            answerInput.value = '';
+            questionModal.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+            questionModal.classList.add('opacity-100', 'pointer-events-auto', 'scale-100');
+            answerInput.focus();
+        }
+
+        function hideQuestion() {
+            questionModal.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+            questionModal.classList.remove('opacity-100', 'pointer-events-auto', 'scale-100');
+        }
+
+        function handlePlayerChange() {
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+            statusDisplay.textContent = `Player ${currentPlayer}'s turn`;
+        }
+
+        function handleResultValidation() {
+            let roundWon = false;
+            for (const condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+                    roundWon = true;
+                    break;
+                }
+            }
+
+            if (roundWon) {
+                statusDisplay.textContent = `Player ${currentPlayer} has won!`;
+                gameActive = false;
+                return;
+            }
+
+            if (!gameState.includes("")) {
+                statusDisplay.textContent = `Game ended in a draw!`;
+                gameActive = false;
+                return;
+            }
+
+            handlePlayerChange();
+        }
+
+        function handleCellClick(event) {
+            const clickedCell = event.target;
+            const clickedCellIndex = parseInt(clickedCell.getAttribute('data-cell-index'));
+
+            if (gameState[clickedCellIndex] !== "" || !gameActive) {
+                return;
+            }
+            
+            showQuestion(clickedCellIndex);
+        }
+
+        function handleSubmit() {
+            const userAnswer = parseInt(answerInput.value);
+            const isCorrect = userAnswer === currentProblem.answer;
+            
+            hideQuestion();
+
+            if (isCorrect) {
+                statusDisplay.textContent = 'Correct!';
+                const cell = cells[selectedCellIndex];
+                gameState[selectedCellIndex] = currentPlayer;
+                cell.classList.add(currentPlayer === 'X' ? 'x-symbol' : 'o-symbol');
+                handleResultValidation();
+            } else {
+                statusDisplay.textContent = `Incorrect! The answer was ${currentProblem.answer}.`;
+                // Forfeits the turn
+                setTimeout(() => {
+                    handlePlayerChange();
+                }, 1500);
+            }
+        }
+
+        function handleRestartGame() {
+            gameActive = true;
+            currentPlayer = 'X';
+            gameState = ["", "", "", "", "", "", "", "", ""];
+            statusDisplay.textContent = `Player ${currentPlayer}'s turn`;
+            cells.forEach(cell => {
+                cell.classList.remove('x-symbol', 'o-symbol');
+            });
+            hideQuestion();
+        }
+
+        // --- Event Listeners ---
+        cells.forEach(cell => cell.addEventListener('click', handleCellClick));
+        restartButton.addEventListener('click', handleRestartGame);
+        submitAnswer.addEventListener('click', handleSubmit);
+        answerInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                handleSubmit();
+            }
+        });
+
+        // Initial setup
+        statusDisplay.textContent = `Player ${currentPlayer}'s turn`;
+    </script>
+</body>
+</html>
